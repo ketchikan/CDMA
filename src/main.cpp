@@ -1,6 +1,28 @@
 #include <iostream>
 #include <iterator>
 
+void spreadMessage(int &message, int *spreadingCode, int spreadingCodeSize, int *messageSpread)
+{
+    for (int i = 0; i < spreadingCodeSize; i++)
+    {
+        messageSpread[i] = spreadingCode[i] * message;
+    }
+}
+
+int decodeMessage(int &numUsers, int &chipLength, int *messageSpread, int *spreadingCode)
+{
+    int result = 0;
+
+    for (int i = 0; i < chipLength; i++)
+    {
+        result += messageSpread[i] * spreadingCode[i];
+    }
+
+    int decoded = result / (numUsers * chipLength); // returns -1 for 0, 1 for 1
+
+    return (decoded == 1) ? 1 : 0;
+}
+
 int main()
 {
     // Set the number of users
@@ -14,29 +36,13 @@ int main()
 
     int messageConverted = message ? 1 : -1;
 
-    std::cout << messageConverted << std::endl;
+    int chipLength = sizeof(spreadingCode) / sizeof(spreadingCode[0]);
 
     // Spread the message across the spectrum
-    int spreadMessage[sizeof(spreadingCode) / sizeof(spreadingCode[0])] = {};
-    for (int i = 0; i < sizeof(spreadingCode) / sizeof(spreadingCode[0]); i++)
-    {
-        spreadMessage[i] = spreadingCode[i] * messageConverted;
-        std::cout << spreadMessage[i] << " ";
-    }
-    std::cout << "\n";
+    int messageSpread[sizeof(spreadingCode) / sizeof(spreadingCode[0])] = {};
+    spreadMessage(messageConverted, spreadingCode, chipLength, messageSpread);
 
     // Now that we have the message spread, we can decode it
-    int resultMessage = 0;
-
-    for (int i = 0; i < sizeof(spreadingCode) / sizeof(spreadingCode[0]); i++)
-    {
-        resultMessage += spreadMessage[i] * spreadingCode[i];
-    }
-
-    int chipLength = sizeof(spreadingCode) / sizeof(spreadingCode[0]);
-    int decoded = resultMessage / (numUsers * chipLength); // gives -1 or +1
-
     // Output!
-    int recoveredMessage = (decoded == 1) ? 1 : 0;
-    std::cout << "Recovered: " << recoveredMessage << std::endl;
+    std::cout << "Recovered: " << decodeMessage(numUsers, chipLength, messageSpread, spreadingCode) << std::endl;
 }
