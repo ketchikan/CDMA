@@ -30,3 +30,7 @@ When transmitting a message through a cellular network, the CDMA encodes each bi
 - 0 -> -1
 
 0 is reserved to mean 'no transmission' by the network.
+
+## NETWORK SIMULATION
+
+This project simulates a network of devices where each device can send and receive messages.
