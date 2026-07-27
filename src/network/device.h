@@ -23,6 +23,8 @@ private:
 
 public:
     // DEVICE QUEUES
-    void createMessage(Message &message);  // Add a message to the sending queue
+    template <typename T>
+    void createMessage(const T &message); // Add a message to the sending queue
+
     void receiveMessage(Message &message); // Add a message to the read queue
 };

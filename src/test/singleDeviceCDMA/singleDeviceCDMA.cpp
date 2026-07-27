@@ -59,18 +59,42 @@ void sendBit1(Test &t, CDMA &c)
     t.fail("Message '1' did fail to decode correctly.");
 }
 
-// TEST 3: Send a length of 1 byte (8 bits)
-void sendByte(Test &t, CDMA &c)
+// TEST 3: Send a uint8_t
+void sendUINT8_T(Test &t, CDMA &c)
 {
-    t.testName("Send Byte");
+    t.testName("Send uint8_t");
     int numUsers = 1;
     int spreadingCode[1] = {-1};
 }
 
-// TEST 4: Send a length of 8 bytes (64 bits)
-void send8Byte(Test &t, CDMA &c)
+// TEST 4: Send a uint16_t
+void sendUINT16_T(Test &t, CDMA &c)
 {
-    t.testName("Send 8 Bytes");
+    t.testName("Send uint16_t");
+    int numUsers = 1;
+    int spreadingCode[1] = {-1};
+}
+
+// TEST 5: Send a uint32_t
+void sendUINT32_T(Test &t, CDMA &c)
+{
+    t.testName("Send uint32_t");
+    int numUsers = 1;
+    int spreadingCode[1] = {-1};
+}
+
+// TEST 6: Send a uint64_t
+void sendUINT64_T(Test &t, CDMA &c)
+{
+    t.testName("Send uint64_t");
+    int numUsers = 1;
+    int spreadingCode[1] = {-1};
+}
+
+// TEST 7: Send a String
+void sendString(Test &t, CDMA &c)
+{
+    t.testName("Send std::string");
     int numUsers = 1;
     int spreadingCode[1] = {-1};
 }
@@ -82,6 +106,9 @@ void runSingleDeviceCDMATests()
     CDMA c;
     sendBit0(t, c);
     sendBit1(t, c);
-    sendByte(t, c);
-    send8Byte(t, c);
+    sendUINT8_T(t, c);
+    sendUINT16_T(t, c);
+    sendUINT32_T(t, c);
+    sendUINT64_T(t, c);
+    sendString(t, c);
 }

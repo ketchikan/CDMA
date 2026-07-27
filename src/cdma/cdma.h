@@ -1,4 +1,7 @@
 #pragma once
+// #include "../network/message.h"
+
+// TODO inline lambda function that transcribes all the 0 -> -1
 
 /**
 @class CDMA
