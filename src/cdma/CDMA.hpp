@@ -1,7 +1,6 @@
 #pragma once
-// #include "../network/message.h"
 
-// TODO inline lambda function that transcribes all the 0 -> -1
+#include <vector>
 
 /**
 @class CDMA
@@ -12,7 +11,7 @@ class CDMA
 {
 private:
 public:
-    void spreadMessage(int &message, int *spreadingCode, int spreadingCodeSize, int *messageSpread);
+    void spreadMessage(std::vector<int> &rawFrame, std::vector<int> &spreadingCode, std::vector<int> &chips);
 
     int decodeMessage(int &numUsers, int &chipLength, int *messageSpread, int *spreadingCode);
 };

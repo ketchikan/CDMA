@@ -34,3 +34,15 @@ When transmitting a message through a cellular network, the CDMA encodes each bi
 ## NETWORK SIMULATION
 
 This project simulates a network of devices where each device can send and receive messages.
+
+This simulation is run off a 'tick' system, where each tick performs a discrete number of steps before advancing.
+
+## Phases of the Project
+
+### Phase 1: CDMA
+
+TODO I need to write up documentation on what it took to transcribe information to the format that CDMA uses. Include how you realized that the 0 is used to signify that no information is being sent.
+
+### Phase 2: Device to Device
+
+I wanted to start off with the most trivial case I could think of that fit the parameters of the project. This smallest trivial case was to define two devices and a single tower to send messages through. The goal of this phase was to create each device, have the tower assign them a spreading code, and to send a message (a single ASCII character) from one device to another.

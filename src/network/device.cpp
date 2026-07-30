@@ -1,54 +1,65 @@
-#include "device.h"
+#include "Device.hpp"
+#include "Tower.hpp"
 
-#include <string>
-#include <vector>
-#include <type_traits>
+#include <limits>
 
-// TODO Instead of sending a terminating character, I can start the message with a preview of the message that they're going to receive.
-// This would include things like the size of the data in bytes, so that the device or tower knows how many to collect.
-
-template <typename T>
-void Device::createMessage(const T &message)
+void Device::createMessage(std::string &s)
 {
-    static_assert(std::is_trivially_copyable_v<T>,
-                  "createMessage only works on trivially copyable types");
+    // Convert a message into a series of frames and add them to the sendQ.
+    // These frames are defined by a frame header, which reads up to n number of entries from the queue (where n is the maximum number of bytes of the message of a frame, so frame size - header size)
 
-    const auto *bytes = reinterpret_cast<const unsigned char *>(&message);
-    Bits bits;
-    bits.reserve(sizeof(T) * 8);
+    size_t numChars = s.length();
+    size_t numFrames = (numChars + frameMessageSize - 1) / frameMessageSize;
+    size_t charIdx = 0;
 
-    for (size_t i = 0; i < sizeof(T); ++i)
-        for (int b = 7; b >= 0; --b)
-            bits.push_back((bytes[i] >> b) & 1);
+    for (size_t i = 0; i < numFrames; i++)
+    {
+        uint8_t numCharsInFrame = static_cast<uint8_t>(
+            std::min(frameMessageSize, numChars - charIdx));
 
-    Message m;
-    m.message = bits;
-    m.type = DataType::INT; // TODO I need a way to convert the current type into the correct enum value
-    m.byteSize = sizeof(T);
+        sendQ.push(static_cast<char>(numCharsInFrame));
 
-    sendQ.push(m);
+        for (size_t j = 0; j < numCharsInFrame; j++)
+        {
+            sendQ.push(s[charIdx++]);
+        }
+
+        // Pad remainder of frame with null bytes (no-data sentinel)
+        for (size_t j = numCharsInFrame; j < frameMessageSize; j++)
+        {
+            sendQ.push('\0');
+        }
+    }
 }
 
-// Specialization for std::string, which is not trivially copyable
-template <>
-void Device::createMessage(const std::string &message)
+void Device::sendFrame()
 {
-    Bits bits;
-    for (unsigned char c : message)
-        for (int b = 7; b >= 0; --b)
-            bits.push_back((c >> b) & 1);
+    // Send one frame worth of data to the Tower
+    // This is done by taking the characters and spreading the message before sending them to the tower
+    // Read one frame of raw bytes from the queue
+    std::vector<int> rawFrame(frameSize);
+    for (size_t i = 0; i < frameSize; i++)
+    {
+        if (!sendQ.empty())
+        {
+            rawFrame[i] = static_cast<uint8_t>(sendQ.front());
+            sendQ.pop();
+        }
+        else
+        {
+            rawFrame[i] = 0; // pad with no-data
+        }
+    }
 
-    Message m;
-    m.message = bits;
-    m.type = DataType::STRING;
-    m.byteSize = message.size();
+    // CDMA - ENCODE
+    size_t chipCount = frameSize * 8 * spreadingCode.size();
+    std::vector<int> chips(chipCount);
+    cdma.spreadMessage(rawFrame, spreadingCode, chips);
 
-    sendQ.push(m);
+    t.receiveFrame(chips);
 }
 
-void Device::receiveMessage(Message &message)
+void Device::receiveFrame()
 {
-    // Add the message to the receive queue
-    // TODO When I move on to longer messages, I need a terminating character to be either appended to the message or added to the queue
-    readQ.push(message);
-};
+    //
+}
