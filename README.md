@@ -9,6 +9,7 @@
 
 ## PROJECT TODO
 
+- [ ] I need to write up how to build it. I have my CMake file that includes GTest from GitHub, and I don't think I include the CMakeLists.txt file?
 - [ ] Set up testing harness (including test 'users' and their messages. Whatever the 'message' it will need to be transmitted into raw binary before it's processed)
 - [ ] Assign PN (psuedo-random noise) to each 'user'
 - [ ] Utilizing each PN, 'spread' each message

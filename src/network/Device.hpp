@@ -11,6 +11,8 @@ class Tower; // forward declaration
 // TODO: In the future, I think there's an argument to be made that I should be sending one byte at a time rather than one bit at a time. Maybe I need to handle the spreading code on each bit first, and then the tower can combine into bytes?
 // - This is because towers can modulate their signals into patterns (like low to high, high to low, high to mid, etc.) that basically encodes a string of bits, I think enough for 1 or 2 bytes (I'll need to check). I'm not sure how I would translate that here or decode it on the devices, but worth looking into for better efficiency.
 
+// TODO Depending on the use case, we may be able to justify having the SmallVector or SmallArray from LLVM here (if the number of chips we can send is low)
+
 /**
 @class Device
 
@@ -19,14 +21,17 @@ class Tower; // forward declaration
 class Device
 {
 private:
-    Tower t;   // Tower we are connected to
-    CDMA cdma; // The CDMA
+    Tower *tower = nullptr; // Tower we are connected to (not owned)
+    CDMA cdma;              // The CDMA
+
+    int deviceID;
 
     // TODO these are hardcoded and probably should be moved out so everything in the network knows these sizes
-    // frameMessageSize must fit in a uint8_t since the header is one byte
+    // Header layout: [destination device ID (sizeof(int) bytes, big-endian)][number of message bytes in this frame (1 byte)]
+    // frameMessageSize must fit in a uint8_t since the length field is one byte
     const size_t frameSize = 256;
-    const size_t headerSize = 1;
-    const size_t frameMessageSize = frameSize - headerSize; // 255 bytes max per frame
+    const size_t headerSize = sizeof(int) + 1;
+    const size_t frameMessageSize = frameSize - headerSize; // 251 bytes max per frame
     // static_assert(frameMessageSize <= std::numeric_limits<uint8_t>::max(),
     //               "frameMessageSize must fit in header byte");
 
@@ -38,16 +43,6 @@ private:
 
     std::vector<int> spreadingCode;
 
-public:
-    /**
-    @fn createMessage
-
-    @brief Add a message the current device to another device to the send queue
-
-    @param std::string
-    */
-    void createMessage(std::string &s);
-
     /**
     @fn sendFrame
 
@@ -57,12 +52,50 @@ public:
     */
     void sendFrame();
 
+public:
+    /**
+    @fn Device
+
+    @brief Constructor for a single device
+
+    @param int deviceID
+    */
+    Device(int id) : deviceID(id) {};
+
+    int getID() const { return deviceID; }
+
+    /**
+    @fn connect
+
+    @brief Connect to a tower, which registers this device with the network and hands back its spreading code.
+
+    @param Tower &t
+    */
+    void connect(Tower &t);
+
     /**
     @fn createMessage
+
+    @brief Add a message from the current device to another device to the send queue
+
+    @param int destID
+    @param std::string message
+    */
+    void createMessage(int destID, std::string &message);
+
+    /**
+    @fn receiveFrame
 
     @brief Receive a single frame from the connected tower to this device's read queue
 
     @param std::string
     */
     void receiveFrame();
+
+    /**
+    @fn processTick
+
+    @brief Perform all work for a single tick on this device, including sending and receiving messages.
+    */
+    void processTick();
 };

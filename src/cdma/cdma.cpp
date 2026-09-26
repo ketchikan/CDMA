@@ -1,4 +1,4 @@
-#include "CDMA.h"
+#include "CDMA.hpp"
 
 void CDMA::spreadMessage(std::vector<int> &rawFrame, std::vector<int> &spreadingCode, std::vector<int> &chips)
 {

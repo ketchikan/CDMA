@@ -3,7 +3,21 @@
 
 #include <limits>
 
-void Device::createMessage(std::string &s)
+void Device::connect(Tower &t)
+{
+    tower = &t;
+    spreadingCode = t.registerDevice(*this);
+}
+
+void Device::processTick()
+{
+    // TODO
+    // For the purposes of the testing, all messages should be created when the device is first registered.
+    // This loop will handle sending frames every tick.
+    sendFrame();
+}
+
+void Device::createMessage(int destID, std::string &s)
 {
     // Convert a message into a series of frames and add them to the sendQ.
     // These frames are defined by a frame header, which reads up to n number of entries from the queue (where n is the maximum number of bytes of the message of a frame, so frame size - header size)
@@ -17,6 +31,11 @@ void Device::createMessage(std::string &s)
         uint8_t numCharsInFrame = static_cast<uint8_t>(
             std::min(frameMessageSize, numChars - charIdx));
 
+        // Header: destination ID (big-endian), then the number of message bytes in this frame
+        for (int b = sizeof(int) - 1; b >= 0; b--)
+        {
+            sendQ.push(static_cast<char>((destID >> (b * 8)) & 0xFF));
+        }
         sendQ.push(static_cast<char>(numCharsInFrame));
 
         for (size_t j = 0; j < numCharsInFrame; j++)
@@ -56,7 +75,7 @@ void Device::sendFrame()
     std::vector<int> chips(chipCount);
     cdma.spreadMessage(rawFrame, spreadingCode, chips);
 
-    t.receiveFrame(chips);
+    tower->receiveFrame(chips);
 }
 
 void Device::receiveFrame()
