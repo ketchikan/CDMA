@@ -2,35 +2,42 @@
 
 #include <vector>
 
+#include "types.hpp"
+
 class Device;  // forward declaration
 class Network; // forward declaration
-
-// TODO Depending on the use case, we may be able to justify having the SmallVector or SmallArray from LLVM here (if the number of devices is low enough)
 
 /**
 @class Tower
 
-@brief Handle a collection of Devices, transmitting messages between them and between other towers to 'distant' users.
+@brief A single cell tower. Keeps track of the devices connected to it; the Network owns the Tower and does the spreading code bookkeeping.
 */
 class Tower
 {
 private:
-    Network *network;             // Network this tower belongs to
+    TowerID id;
+    Network *network;              // Network this tower belongs to
     std::vector<Device *> devices; // Devices connected to this tower (not owned)
-    std::vector<int> combinedSignal;
-    bool hasSignal = false;
 
 public:
-    explicit Tower(Network &n) : network(&n) {}
+    Tower(TowerID id, Network &n) : id(id), network(&n) {}
+
+    TowerID getID() const { return id; }
+    const std::vector<Device *> &getDevices() const { return devices; }
 
     /**
     @fn registerDevice
 
-    @brief Connect a device to this tower and register it with the Network. Returns the device's spreading code.
-    */
-    std::vector<int> registerDevice(Device &d);
+    @brief Connect a device to this tower, registering it with the Network. Called by Device::connect.
 
-    void tickDevices();
-    void receiveFrame(std::vector<int> &frame);
-    void processTick();
+    @return The spreading code assigned to the device
+    */
+    CodeIdx registerDevice(Device &d);
+
+    /**
+    @fn unregisterDevice
+
+    @brief Disconnect a device from this tower, freeing its spreading code on the Network. Called by Device::disconnect.
+    */
+    void unregisterDevice(Device &d);
 };

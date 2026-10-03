@@ -47,3 +47,12 @@ TODO I need to write up documentation on what it took to transcribe information 
 ### Phase 2: Device to Device
 
 I wanted to start off with the most trivial case I could think of that fit the parameters of the project. This smallest trivial case was to define two devices and a single tower to send messages through. The goal of this phase was to create each device, have the tower assign them a spreading code, and to send a message (a single ASCII character) from one device to another.
+
+## KNOWN LIMITATIONS
+
+Right now this can support a maximum of 64 devices on the network at a time. This is a side effect of the Walsh codes implementation I have defined in `network.hpp`.
+
+For the sake of simplicity, the following are true for this project:
+
+- Tower-to-tower communication all takes place in the `Network` class. This is to avoid implementing something like adjacency tables and search algorithms to find the correct tower to send messages to.
+- Currently, moving a device from one tower to another is not supported. A device connects to a single tower and will stay with it.

@@ -1,101 +1,48 @@
 #pragma once
 
-#include <queue>
-#include <string>
-#include <vector>
-
-#include "../CDMA/CDMA.hpp"
+#include "types.hpp"
 
 class Tower; // forward declaration
-
-// TODO: In the future, I think there's an argument to be made that I should be sending one byte at a time rather than one bit at a time. Maybe I need to handle the spreading code on each bit first, and then the tower can combine into bytes?
-// - This is because towers can modulate their signals into patterns (like low to high, high to low, high to mid, etc.) that basically encodes a string of bits, I think enough for 1 or 2 bytes (I'll need to check). I'm not sure how I would translate that here or decode it on the devices, but worth looking into for better efficiency.
-
-// TODO Depending on the use case, we may be able to justify having the SmallVector or SmallArray from LLVM here (if the number of chips we can send is low)
 
 /**
 @class Device
 
-@brief A class to simulate a single 'Device', which can represent a single device on the network. Capable of sending and receiving messages.
+@brief A single device on the network. Connects to a tower of your choosing (rather than discovering one) and is given a spreading code when it does.
+
+A Device disconnects itself when destroyed, so the Network and Tower it's connected to must outlive it.
 */
 class Device
 {
 private:
+    DeviceID id;
     Tower *tower = nullptr; // Tower we are connected to (not owned)
-    CDMA cdma;              // The CDMA
-
-    int deviceID;
-
-    // TODO these are hardcoded and probably should be moved out so everything in the network knows these sizes
-    // Header layout: [destination device ID (sizeof(int) bytes, big-endian)][number of message bytes in this frame (1 byte)]
-    // frameMessageSize must fit in a uint8_t since the length field is one byte
-    const size_t frameSize = 256;
-    const size_t headerSize = sizeof(int) + 1;
-    const size_t frameMessageSize = frameSize - headerSize; // 251 bytes max per frame
-    // static_assert(frameMessageSize <= std::numeric_limits<uint8_t>::max(),
-    //               "frameMessageSize must fit in header byte");
-
-    /**
-    In the simplest case, each queue should be handling a collection of integers. Each tick, we will grab N integers, where N is the frame size in bits.
-    */
-    std::queue<char> sendQ;
-    std::queue<int> readQ;
-
-    std::vector<int> spreadingCode;
-
-    /**
-    @fn sendFrame
-
-    @brief Send a single frame from this device to the connected tower
-
-    @param std::string
-    */
-    void sendFrame();
+    CodeIdx codeIdx = NoCode;
 
 public:
-    /**
-    @fn Device
+    explicit Device(DeviceID id) : id(id) {}
+    ~Device();
 
-    @brief Constructor for a single device
+    // Towers and the Network hold pointers to a connected Device, so it must stay put
+    Device(const Device &) = delete;
+    Device &operator=(const Device &) = delete;
 
-    @param int deviceID
-    */
-    Device(int id) : deviceID(id) {};
-
-    int getID() const { return deviceID; }
+    DeviceID getID() const { return id; }
+    bool isConnected() const { return tower != nullptr; }
+    CodeIdx getCodeIdx() const { return codeIdx; }
 
     /**
     @fn connect
 
-    @brief Connect to a tower, which registers this device with the network and hands back its spreading code.
+    @brief Connect to a tower, which registers this device with the Network and hands back its spreading code.
 
-    @param Tower &t
+    Throws std::logic_error if already connected. Also propagates the Network's errors (duplicate device ID, no codes left), in which case the device stays disconnected.
     */
     void connect(Tower &t);
 
     /**
-    @fn createMessage
+    @fn disconnect
 
-    @brief Add a message from the current device to another device to the send queue
-
-    @param int destID
-    @param std::string message
+    @brief Disconnect from the current tower, freeing the spreading code. Does nothing if not connected.
     */
-    void createMessage(int destID, std::string &message);
-
-    /**
-    @fn receiveFrame
-
-    @brief Receive a single frame from the connected tower to this device's read queue
-
-    @param std::string
-    */
-    void receiveFrame();
-
-    /**
-    @fn processTick
-
-    @brief Perform all work for a single tick on this device, including sending and receiving messages.
-    */
-    void processTick();
+    void disconnect();
 };

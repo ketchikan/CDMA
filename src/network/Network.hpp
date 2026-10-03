@@ -1,41 +1,48 @@
 #pragma once
 
-#include "Tower.hpp"
-
+#include <cstdint>
 #include <memory>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
-using spreadingCode = std::vector<int>;
-using deviceID = int;
+#include "types.hpp"
 
-/**
-@struct DeviceRecord
-
-@brief Everything the Network knows about a registered device: its spreading code and the tower it is currently connected to.
-*/
-struct DeviceRecord
-{
-    spreadingCode code;
-    Tower *tower = nullptr;
-};
+class Tower; // forward declaration
 
 /**
 @class Network
 
-@brief Handle a collection of Towers, as well as handling device registration, spreading codes, and tower-to-tower communication.
+@brief A simulated network used for registering user information, assigning spreading codes to devices, and assisting with transmission from tower to tower.
+
+Public methods:
+- addTower: create a tower on this network
+- registerDevice / unregisterDevice: attach a device to a tower and hand out (or reclaim) its spreading code
+- towerFor: find which tower a device is connected to
+
+A Network must outlive every Tower's Devices, since a Device unregisters itself when it is destroyed.
 */
 class Network
 {
 private:
-    // unique_ptr keeps each Tower at a fixed address, so Tower& / Tower* handed out by addTower() stay valid as more towers are added
-    std::vector<std::unique_ptr<Tower>> towers;
-    std::unordered_map<deviceID, DeviceRecord> registry;
+    struct DeviceRecord
+    {
+        Tower *tower = nullptr;
+        CodeIdx code = NoCode;
+    };
 
-    spreadingCode assignSpreadingCode(deviceID id); // Creates a single spreading code for a device ID. Eventually I want to keep track of already created but unused spreading codes we can use instead of creating a new one.
+    static_assert(WalshSize <= 64, "codesTaken holds one bit per Walsh row");
+    static constexpr uint64_t AllCodesTaken = WalshSize == 64 ? ~0ULL : (1ULL << WalshSize) - 1;
+
+    // unique_ptr keeps each Tower at a fixed address, so the Tower& handed out by addTower() stays valid as more towers are added
+    std::vector<std::unique_ptr<Tower>> towers;
+    std::unordered_map<DeviceID, DeviceRecord> registry;
+
+    // Bit n set = Walsh row n is assigned and in use. Row 0 starts out taken: it's all +1's, which real systems reserve for the pilot channel.
+    uint64_t codesTaken = 1;
 
 public:
-    Network() = default;
+    Network();
+    ~Network(); // Defined in the .cpp, where Tower is a complete type
 
     // Towers hold a pointer back to their Network, so the Network must not be copied or moved
     Network(const Network &) = delete;
@@ -51,16 +58,27 @@ public:
     /**
     @fn registerDevice
 
-    @brief Called by a Tower when a device connects to it. Records the device and the tower it's on, and returns the device's spreading code.
+    @brief Called by a Tower when a device connects to it. Records which tower the device is on and assigns it the lowest free spreading code.
+
+    Throws std::invalid_argument if the device is already registered, and std::runtime_error if no spreading codes are free.
+
+    @return The index of the Walsh row assigned to the device
     */
-    spreadingCode registerDevice(deviceID id, Tower &t);
+    CodeIdx registerDevice(DeviceID id, Tower &t);
+
+    /**
+    @fn unregisterDevice
+
+    @brief Forget a device and free its spreading code so another device can use it.
+
+    Throws std::invalid_argument if the device isn't registered.
+    */
+    void unregisterDevice(DeviceID id);
 
     /**
     @fn towerFor
 
-    @brief Look up which tower a device is connected to (for routing). Returns nullptr if the device isn't registered.
+    @brief Look up which tower a device is connected to. Returns nullptr if the device isn't registered.
     */
-    Tower *towerFor(deviceID id) const;
-
-    void runLoop();
+    Tower *towerFor(DeviceID id) const;
 };

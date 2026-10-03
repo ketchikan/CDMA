@@ -1,46 +1,51 @@
 #include "Network.hpp"
+#include "Tower.hpp"
+
+#include <stdexcept>
+
+Network::Network() = default;
+Network::~Network() = default;
 
 Tower &Network::addTower()
 {
-    towers.push_back(std::make_unique<Tower>(*this));
+    TowerID id = static_cast<TowerID>(towers.size());
+    towers.push_back(std::make_unique<Tower>(id, *this));
     return *towers.back();
 }
 
-spreadingCode Network::assignSpreadingCode(deviceID id)
+CodeIdx Network::registerDevice(DeviceID id, Tower &t)
 {
-    // TODO
-    return {};
-}
+    if (registry.count(id))
+    {
+        throw std::invalid_argument("Network: device is already registered");
+    }
+    if (codesTaken == AllCodesTaken)
+    {
+        throw std::runtime_error("Network: no spreading codes available");
+    }
 
-spreadingCode Network::registerDevice(deviceID id, Tower &t)
-{
-    spreadingCode code = assignSpreadingCode(id);
-    registry[id] = {code, &t};
+    // The free rows are the 1 bits of ~codesTaken, so the lowest free row is its count of trailing zeros
+    CodeIdx code = __builtin_ctzll(~codesTaken);
+    codesTaken |= (1ULL << code);
+
+    registry[id] = {&t, code};
     return code;
 }
 
-Tower *Network::towerFor(deviceID id) const
+void Network::unregisterDevice(DeviceID id)
+{
+    auto it = registry.find(id);
+    if (it == registry.end())
+    {
+        throw std::invalid_argument("Network: device is not registered");
+    }
+
+    codesTaken &= ~(1ULL << it->second.code);
+    registry.erase(it);
+}
+
+Tower *Network::towerFor(DeviceID id) const
 {
     auto it = registry.find(id);
     return it == registry.end() ? nullptr : it->second.tower;
-}
-
-void Network::runLoop()
-{
-    // Each network tick runs in phases so that the order towers are iterated in doesn't change the results
-
-    // Phase 1: every device on every tower sends one frame
-    for (auto &t : towers)
-    {
-        t->tickDevices();
-    }
-
-    // Phase 2: every tower despreads the combined signal it received
-    for (auto &t : towers)
-    {
-        t->processTick();
-    }
-
-    // TODO Phase 3: towers forward traffic bound for other towers' devices
-    // TODO Phase 4: towers spread and send traffic down to their own devices
 }
