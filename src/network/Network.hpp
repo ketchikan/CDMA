@@ -4,8 +4,11 @@
 #include <memory>
 #include <unordered_map>
 #include <vector>
+#include <queue>
 
 #include "types.hpp"
+#include "../cdma/cdma.hpp"
+#include "../cdma/frame.hpp"
 
 class Tower; // forward declaration
 
@@ -18,6 +21,8 @@ Public methods:
 - addTower: create a tower on this network
 - registerDevice / unregisterDevice: attach a device to a tower and hand out (or reclaim) its spreading code
 - towerFor: find which tower a device is connected to
+- forward: carry a decoded frame from one tower to the tower serving its destination (the 'backhaul'; no radio, so no chips)
+- tick / runLoop: advance the simulation one tick, or until nothing is left in flight
 
 A Network must outlive every Tower's Devices, since a Device unregisters itself when it is destroyed.
 */
@@ -32,6 +37,13 @@ private:
 
     static_assert(WalshSize <= 64, "codesTaken holds one bit per Walsh row");
     static constexpr uint64_t AllCodesTaken = WalshSize == 64 ? ~0ULL : (1ULL << WalshSize) - 1;
+
+    // The one CDMA engine (and Walsh matrix) shared by every device and tower
+    CDMA cdmaEngine;
+
+    // Frames collected from Towers that need to be forwarded to a new tower.
+    std::queue<Frame> processing;
+    size_t dropped = 0; // Frames addressed to a device that isn't on the network
 
     // unique_ptr keeps each Tower at a fixed address, so the Tower& handed out by addTower() stays valid as more towers are added
     std::vector<std::unique_ptr<Tower>> towers;
@@ -81,4 +93,48 @@ public:
     @brief Look up which tower a device is connected to. Returns nullptr if the device isn't registered.
     */
     Tower *towerFor(DeviceID id) const;
+
+    /**
+    @fn cdma
+
+    @brief The CDMA engine shared by everything on this network.
+    */
+    const CDMA &cdma() const { return cdmaEngine; }
+
+    /**
+    @fn forward
+
+    @brief Hand a decoded frame to the Network to be delivered to the tower serving its destination. Delivery happens at the end of the current tick, so the receiving tower handles it next tick no matter which tower ran first.
+    */
+    void forward(const Frame &f) { processing.push(f); }
+
+    /**
+    @fn droppedFrames
+
+    @brief How many frames were thrown away because their destination device isn't on the network.
+    */
+    size_t droppedFrames() const { return dropped; }
+
+    /**
+    @fn isIdle
+
+    @brief True when nothing is left in flight: no device or tower has queued frames or signals, and nothing is waiting in the Network's queue.
+    */
+    bool isIdle() const;
+
+    /**
+    @fn tick
+
+    @brief Advance the simulation by one tick: every tower runs its loop, then frames bound for other towers are delivered.
+    */
+    void tick();
+
+    /**
+    @fn runLoop
+
+    @brief Run ticks until the network is idle, i.e. every queued message has been sent and received. Returns the number of ticks it took.
+
+    Throws std::runtime_error if the network is still busy after maxTicks, so a bug can't hang the program.
+    */
+    size_t runLoop(size_t maxTicks = 10000);
 };

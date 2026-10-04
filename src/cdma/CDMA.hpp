@@ -31,7 +31,7 @@ public:
     /**
     Throws std::invalid_argument if spreadingCodeIdx isn't a valid Walsh row.
     */
-    void spreadMessage(const Frame::Bytes &rawFrame, std::vector<int> &chips, int spreadingCodeIdx);
+    void spreadMessage(const Frame::Bytes &rawFrame, std::vector<int> &chips, int spreadingCodeIdx) const;
 
     /**
     @fn decodeFrame

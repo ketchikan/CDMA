@@ -1,5 +1,11 @@
 # Code Division Multiple Access (CDMA)
 
+# SECTIONS TODO
+
+- [ ] Create an 'About' section (short description of the project purpose and how it grew from just implementing Hadamard Matrices and CDMA to creating a limited network simulation)
+- [ ] Create a 'Getting Started' section to describe how to run this on your system (I think we need to specify that the Google Tests downloads via the CMakeLists file and goes into the build folder)
+- [ ] Create a 'how CDMA works' section that gets into some details of how the matrices work, how CDMA works in real-world implementations (don't get too in the weeds); link some sources.
+
 ## README TODO
 
 - [x] Defining CDMA
@@ -47,6 +53,14 @@ TODO I need to write up documentation on what it took to transcribe information 
 ### Phase 2: Device to Device
 
 I wanted to start off with the most trivial case I could think of that fit the parameters of the project. This smallest trivial case was to define two devices and a single tower to send messages through. The goal of this phase was to create each device, have the tower assign them a spreading code, and to send a message (a single ASCII character) from one device to another.
+
+## FRAMES
+
+// TODO I need to write up something about how the frames work
+
+## MAIN SIMULATION LOOP
+
+// TODO Let's explain how the 'ticks' work in the simulation. What starts and ends the simulation.
 
 ## KNOWN LIMITATIONS
 

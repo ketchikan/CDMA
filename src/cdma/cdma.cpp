@@ -32,7 +32,7 @@ void CDMA::checkCodeIdx(int spreadingCodeIdx) const
     }
 }
 
-void CDMA::spreadMessage(const Frame::Bytes &rawFrame, std::vector<int> &chips, int spreadingCodeIdx)
+void CDMA::spreadMessage(const Frame::Bytes &rawFrame, std::vector<int> &chips, int spreadingCodeIdx) const
 {
     checkCodeIdx(spreadingCodeIdx);
 
