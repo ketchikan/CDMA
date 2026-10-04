@@ -1,72 +1,110 @@
 # Code Division Multiple Access (CDMA)
 
-# SECTIONS TODO
+This project is a hands-on implementation of Code Division Multiple Access (CDMA), built in C++ and tested with the Google Test framework. CDMA is the technique used in 2G and 3G cellular networks to allow multiple users to share the same radio frequency, increasing the number of users each cell in a network could serve.
 
-- [ ] Create an 'About' section (short description of the project purpose and how it grew from just implementing Hadamard Matrices and CDMA to creating a limited network simulation)
-- [ ] Create a 'Getting Started' section to describe how to run this on your system (I think we need to specify that the Google Tests downloads via the CMakeLists file and goes into the build folder)
-- [ ] Create a 'how CDMA works' section that gets into some details of how the matrices work, how CDMA works in real-world implementations (don't get too in the weeds); link some sources.
+It began as an implementation of CDMA using a Hadamard matrix, whose rows serve as spreading codes, and a check that an input message (or multiple simultaneous messages) could be decoded accurately from a signal that combines other messages.
 
-## README TODO
+It grew in a few steps:
 
-- [x] Defining CDMA
-- [ ] Setting parameters for testing; define success for the project
-- [ ] Track benchmarks and progress
-- [ ] DOD
+1. **Spreading and despreading**: These are organized into a `CDMA` class, which defines the methods devices and towers use to send and receive messages.
+2. **Messages became frames**: Rather than sending individual bytes, I sent messages in fixed-size frames. Each frame has a small header followed by bytes of the message. This allows messages to arrive out of order and to be arbitrarily long. Messages are split into frames in each `Device` and recombined when they are received.
+3. **Devices, towers, and a network**: Each `Device` takes on the abstract role of any device that could connect to a cellular network, such as a cell phone, laptop, or tablet. Devices connect to a `Tower`, and all towers belong to a single `Network`, which assigns spreading codes to devices and transfers frames between towers. This simplified model of a cellular network made it quicker to build while still giving a reasonable demonstration of CDMA without getting too deep into the weeds.
+4. **A tick-based loop**: Taking inspiration from Minecraft, I run the simulation as a 'tick-based' system. Each tick, devices are prompted to push to and drain from their queues, while towers combine the signals they receive and forward the decoded frames to their destinations, passing them between towers via the `Network`.
+5. **A Google Test suite**: Tests ensure that messages arrive correctly, including when several devices send messages at the same time.
 
-## PROJECT TODO
+In the end, I had a simplified cellular network simulation implementing one of the brilliant pieces of math that allowed more people to stay connected using the same resources as previous generations.
 
-- [ ] I need to write up how to build it. I have my CMake file that includes GTest from GitHub, and I don't think I include the CMakeLists.txt file?
-- [ ] Set up testing harness (including test 'users' and their messages. Whatever the 'message' it will need to be transmitted into raw binary before it's processed)
-- [ ] Assign PN (psuedo-random noise) to each 'user'
-- [ ] Utilizing each PN, 'spread' each message
-- [ ] Combine all spread messages
-- [ ] Implement encryption? AES of some kind, elliptical is probably the best one (used in modern phones now)
+## Getting Started
 
-## Steps
+### Requirements
 
-- Initially, each 'user' (which would be a single device, like a phone) is assigned a unique identifier code
-- This code is utilized to 'spread' the users message across a spectrum
-- Multiple messages are combined together and transmitted together
-- When the message reaches the intended target, the user 'decodes' the message to obtain the message intended for them from the other messages included
+- CMake 3.14 or newer
+- A C++17 compiler: GCC or Clang (MinGW on Windows). MSVC is not supported, because `Network.cpp` uses the GCC/Clang builtin `__builtin_ctzll`.
+- An internet connection the first time you build (see below for information on Google Test)
 
-## Encoding
+### Build and run
 
-When transmitting a message through a cellular network, the CDMA encodes each bit of the message.
+The quickest way on Mac, Linux, or Windows with MinGW:
 
-- 1 -> +1
-- 0 -> -1
+```bash
+./run.sh
+```
 
-0 is reserved to mean 'no transmission' by the network.
+This creates the `build/` folder, configures and compiles the project, then runs `./CDMA`. To do the same by hand:
 
-## NETWORK SIMULATION
+```bash
+cmake -S . -B build
+cmake --build build
+./build/CDMA
+```
 
-This project simulates a network of devices where each device can send and receive messages.
+Running `CDMA` with no arguments runs every test, then a demo simulation. You can also choose one:
 
-This simulation is run off a 'tick' system, where each tick performs a discrete number of steps before advancing.
+| Command                                               | What it does                                           |
+| ----------------------------------------------------- | ------------------------------------------------------ |
+| `./build/CDMA --tests`                                | Run only the tests                                     |
+| `./build/CDMA --demo`                                 | Run only the demo simulation                           |
+| `./build/CDMA --tests --gtest_filter='NetworkTest.*'` | Run a subset of the tests (any `--gtest_*` flag works) |
+| `./build/CDMA --help`                                 | Show usage                                             |
 
-## Phases of the Project
+If any test fails, the program exits with a non-zero code and skips the demo.
 
-### Phase 1: CDMA
+The same tests are also built as a standalone executable for `ctest`:
 
-TODO I need to write up documentation on what it took to transcribe information to the format that CDMA uses. Include how you realized that the 0 is used to signify that no information is being sent.
+```bash
+cd build && ctest --output-on-failure
+```
 
-### Phase 2: Device to Device
+### Where Google Test comes from
 
-I wanted to start off with the most trivial case I could think of that fit the parameters of the project. This smallest trivial case was to define two devices and a single tower to send messages through. The goal of this phase was to create each device, have the tower assign them a spreading code, and to send a message (a single ASCII character) from one device to another.
+You don't need to install Google Test. `CMakeLists.txt` downloads it from GitHub (using CMake's `FetchContent`) the first time you configure the project, and unpacks it into `build/_deps/`. That's why the first build needs internet access; later builds reuse the downloaded copy. Deleting the `build/` folder removes it, and it will be downloaded again on the next build.
 
-## FRAMES
+### Trying your own simulation
 
-// TODO I need to write up something about how the frames work
+`runDemo()` in [src/main.cpp](src/main.cpp) is a step-by-step example you can copy and modify. The core of it is only a few lines:
 
-## MAIN SIMULATION LOOP
+```cpp
+Network network;                      // declared first, so it outlives the devices
+Tower &tower = network.addTower();
 
-// TODO Let's explain how the 'ticks' work in the simulation. What starts and ends the simulation.
+Device alice(1), bob(2);
+alice.connect(tower);                 // the network assigns each device a spreading code
+bob.connect(tower);
 
-## KNOWN LIMITATIONS
+alice.sendMessage(2, "Hello!");       // or sendMessage({2, 3}, "...") for several recipients
+network.runLoop();                    // run until every message has been sent and received
 
-Right now this can support a maximum of 64 devices on the network at a time. This is a side effect of the Walsh codes implementation I have defined in `network.hpp`.
+// bob.receivedMessages() now holds the message
+```
 
-For the sake of simplicity, the following are true for this project:
+### Project layout
 
-- Tower-to-tower communication all takes place in the `Network` class. This is to avoid implementing something like adjacency tables and search algorithms to find the correct tower to send messages to.
+- `src/cdma/`: the frame format, the Walsh matrix, and spreading/despreading
+- `src/network/`: `Network`, `Tower`, `Device`, and message splitting/reassembly
+- `src/main.cpp`: runs the tests and the demo
+- `tests/`: the Google Test cases
+
+### Simulation Simplifications & Limitations
+
+- Everything runs in synchronized ticks, so Walsh codes stay orthogonal in _both_ directions. There is no noise, multipath or power control, and no soft capacity limit. I have genuinely no idea if this will still work if it's noisy.
+- The whole network shares one pool of Walsh codes, so the device limit applies across all towers together. Real towers reuse codes and tell each other apart by PN offset. The limitation for this simulation is that we can only hold a total of 63 devices (because one of the Walsh codes is reserved by default).
+- Tower-to-tower communication goes through the `Network` class, standing in for the wired backbone that connects towers in real networks.
+- Each device sends at most one frame per tick, and each tower sends at most one frame to a given device per tick.
+- Messages between two devices are limited to strings for this simulation, but in reality can take on any shape (such as HTTP requests, phone calls, and more).
 - Currently, moving a device from one tower to another is not supported. A device connects to a single tower and will stay with it.
+
+### Future Change Opportunities
+
+- If I were to introduce noise into the simulation, I would likely include an implementation of Reed-Solomon or Hamming codes to help with error handling and recovery.
+- I believe that UDP also holds techniques that we could utilize to request lost packets (frames) again, or to recover them via XOR data.
+- I was originally interested in creating more realistic tower-to-tower handoffs of messages, which I could implement for a more realistic or robust simulation. I felt that it was unnecessary for these initial versions.
+- I was interested in implementing device hand-offs to simulate devices traveling between cells. My original idea was to implement a grid-style system and use a k-means algorithm to connect to the closest tower.
+- I was interested in implementing AES or end-to-end encryption. I was also interested in simulating the Tor network with layered encryption, but I may save that for a different project.
+
+### Sources
+
+- Charan Langton, [CDMA Tutorial](https://complextoreal.com/wp-content/uploads/2013/01/CDMA.pdf): worked examples of spreading, combining and despreading.
+- Wikipedia: [Code-division multiple access](https://en.wikipedia.org/wiki/Code-division_multiple_access), [Spread spectrum](https://en.wikipedia.org/wiki/Spread_spectrum)
+- Wikipedia: [Hadamard matrix](https://en.wikipedia.org/wiki/Hadamard_matrix) (includes Sylvester's construction) and [Walsh matrix](https://en.wikipedia.org/wiki/Walsh_matrix)
+- MathWorks, [Discrete Walsh-Hadamard Transform](https://www.mathworks.com/help/signal/ug/discrete-walsh-hadamard-transform.html)
+- [Google Test](https://github.com/google/googletest)
